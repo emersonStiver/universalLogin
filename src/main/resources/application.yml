@@ -1,0 +1,54 @@
+server:
+  port: 8081
+
+#springdoc:
+  #api-docs:
+    #path: index
+  #swagger-ui:
+    #path: welcome
+spring:
+  application:
+    name: universalLogin
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/universalLogin
+    username: root
+    password: Germany1#
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    database: mysql
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+
+
+allowed-post-routes: >
+  /login/**,
+  /oauth2/**,
+  /logout,
+  /bff/**
+
+resources: >
+  /api/v1/auth/**,
+  /v2/api-docs,
+  /v3/api-docs,
+  /v3/api-docs/**,
+  /swagger-resources,
+  /swagger-resources/**,
+  /configuration/ui,
+  /configuration/security,
+  /swagger-ui/**,
+  /webjars/**,
+  /swagger-ui.html
+myapp:
+  security:
+    jwt:
+      secretKey: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expirationTime: 86400000 #a day
+      refreshExpiration: 86400000 #7 days
+
