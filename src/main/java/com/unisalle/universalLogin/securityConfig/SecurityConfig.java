@@ -32,20 +32,33 @@ import org.springframework.security.web.authentication.logout.LogoutHandler;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@ComponentScan (value = {"com.unisalle.universalLogin"})
-//@EnableGlobalMethodSecurity (prePostEnabled = true)
+@ComponentScan (value = "com.unisalle.universalLogin")
 public class SecurityConfig {
     @Value ("${allowed-post-routes}")
     private String[] allowedPostRoutes;
 
-    @Value ("${resources}")
-    private String[] resources;
+    //@Value ("${resources}")
+    //private String[] resources;
+
+
+    String resourcesString = "/api/v1/auth/**," +
+            "/v2/api-docs," +
+            "/v3/api-docs," +
+            "/v3/api-docs/**," +
+            "/swagger-resources," +
+            "/swagger-resources/**," +
+            "/configuration/ui," +
+            "/configuration/security," +
+            "/swagger-ui/**," +
+            "/webjars/**," +
+            "/swagger-ui.html";
+
+    String[] resources = resourcesString.split(",");
     /*
     @Value("${myapp.user-role-routes}")
     private String[] userRoleRoutes;
     @Value("${myapp.organization-role-routes}")
     private String[] organizationRoleRoutes;
-
      */
     private UserRepository userRepository;
     private UserDetailsService userDetailsService;
@@ -56,15 +69,22 @@ public class SecurityConfig {
     }
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity security,JwtAuthorizationFilter authorizationFilter, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception{
+        String prefix = "/api/v1/users";
         return security
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(requests -> {
-                    requests.requestMatchers(HttpMethod.POST, allowedPostRoutes).permitAll();
-                    requests.requestMatchers(resources).permitAll();
-                    //requests.requestMatchers(userRoleRoutes).hasRole("User");
-                    //requests.requestMatchers(organizationRoleRoutes).hasRole("Organization");
-                    requests.anyRequest().authenticated();
+                .authorizeHttpRequests(r -> {
+                    r.requestMatchers(HttpMethod.POST,prefix+"/create-user").permitAll();
+                    r.requestMatchers(prefix+"/exists/**").permitAll();
+                    r.requestMatchers("/login").permitAll();
+                    r.requestMatchers("/logout/**").permitAll();
+                    r.requestMatchers(resources).permitAll();
+                    r.requestMatchers(prefix+"/user-info").hasAuthority("user::read");
+                    r.requestMatchers(HttpMethod.PUT,prefix+"/edit").hasAuthority("user::update");
+                    r.requestMatchers(prefix+"/delete-user").hasAuthority("user::delete");
+                    r.requestMatchers(prefix+"/password").hasAuthority("user::update");
+                    r.anyRequest().authenticated();
                 })
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable)
                 .authenticationProvider(daoAuthenticationProvider())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilter(jwtAuthenticationFilter)

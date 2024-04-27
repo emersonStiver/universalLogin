@@ -6,17 +6,17 @@ import com.unisalle.universalLogin.dtos.UserEntityDTO;
 import java.util.List;
 
 public interface UserManagementService {
-    UserEntityDTO findUser(long id);
-    List<UserEntityDTO> findUsers(List<Long> userIdentifications);
+    UserEntityDTO findUser(String userId);
+    List<UserEntityDTO> findUsers(List<String> userIds);
 
     UserEntityDTO createUser(UserEntityDTO user);
 
-    UserEntityDTO updateUser(UserEntityDTO user);
+    UserEntityDTO updateUser(String userId, UserEntityDTO user);
 
-    DeleteUserResult deleteUser(String username);
+    DeleteUserResult deleteUser(String userId);
 
-    boolean changePassword(String username, String oldPassword, String newPassword);
+    boolean changePassword(String userId, String oldPassword, String newPassword);
 
-    boolean userExists(long id);
+    boolean userExists(String userId);
 }
 

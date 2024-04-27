@@ -3,9 +3,13 @@ package com.unisalle.universalLogin.services;
 import com.unisalle.universalLogin.dtos.DeleteUserResult;
 import com.unisalle.universalLogin.dtos.UserEntityDTO;
 import com.unisalle.universalLogin.entities.UserEntity;
+import com.unisalle.universalLogin.exceptions.DBActionException;
 import com.unisalle.universalLogin.repositories.UserRepository;
 import com.unisalle.universalLogin.utilities.UserEntityMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,21 +27,24 @@ public class UserManagementServiceImpl implements UserManagementService {
     private UserEntityMapper userEntityMapper;
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
-    private UserManagementServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserEntityMapper userEntityMapper){
+    public UserManagementServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserEntityMapper userEntityMapper){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userEntityMapper = userEntityMapper;
     }
+    @Cacheable (value = "user", key = "#userId")
     @Override
-    public UserEntityDTO findUser(long id) {
-        UserEntity userEntity = userRepository.findById(id).orElseThrow(() -> new UsernameNotFoundException("User with id: " + id + " was not found"));
+    public UserEntityDTO findUser(String userId) {
+        UserEntity userEntity = userRepository
+                .findByUserId(userId)
+                .orElseThrow(() -> new UsernameNotFoundException(userId));
         return userEntityMapper.toDto(userEntity);
     }
 
     @Override
-    public List<UserEntityDTO> findUsers(List<Long> userIdentifications){
+    public List<UserEntityDTO> findUsers(List<String> userIds){
         List<UserEntity> users = userRepository
-                .findAllUsersByIds(userIdentifications)
+                .findAllUsersByIds(userIds)
                 .orElseThrow(() -> new RuntimeException("Users were not found"));
         return users.stream().map(userEntity -> userEntityMapper.toDto(userEntity)).collect(Collectors.toList());
     }
@@ -52,13 +59,13 @@ public class UserManagementServiceImpl implements UserManagementService {
             return userEntityMapper.toDto(savedUserEntity);
         } catch (Exception e) {
             // Handle any exceptions and log or rethrow as needed
-            throw new RuntimeException("Failed to create user: " + e.getMessage(), e);
+            throw new DBActionException(user ,e.getMessage());
         }
     }
-
+    @CachePut (cacheNames = "user", key = "#userId")
     @Override
     @Transactional
-    public UserEntityDTO updateUser(UserEntityDTO user) {
+    public UserEntityDTO updateUser(String userId, UserEntityDTO user) {
         // Define a function to verify and update string values
         BiFunction<String, String, String> verifyUpdatedString = (oldValue, newValue) -> {
             return (newValue != null && !newValue.isEmpty()) ? newValue : oldValue;
@@ -66,66 +73,55 @@ public class UserManagementServiceImpl implements UserManagementService {
 
         try {
             // Fetch the user entity from the repository
-            UserEntity userEntity = userRepository.findByEmail(user.getEmail())
+            UserEntity userEntity = userRepository.findByUserId(userId)
                     .orElseThrow(() -> new UsernameNotFoundException("User " + user.getEmail() + " was not found"));
-
             // Update user entity properties
-            userEntity.setFirstName(verifyUpdatedString.apply(userEntity.getFirstName(), user.getFirstname()));
-            userEntity.setLastName(verifyUpdatedString.apply(userEntity.getLastName(), user.getLastname()));
+            userEntity.setFirstName(verifyUpdatedString.apply(userEntity.getFirstName(), user.getFirstName()));
+            userEntity.setLastName(verifyUpdatedString.apply(userEntity.getLastName(), user.getLastName()));
             userEntity.setEmail(verifyUpdatedString.apply(userEntity.getEmail(), user.getEmail()));
             userEntity.setLastUpdate(LocalDateTime.now());
 
             // Save the updated user entity
-            UserEntity updatedUserEntity = userRepository.save(userEntity);
+            UserEntity clonedEntity = userEntity.clone();
+            UserEntity updatedUserEntity = userRepository.save(clonedEntity);
 
             // Check if the update was successful
-            if (updatedUserEntity == userEntity) {
+            if (updatedUserEntity == clonedEntity) {
                 // Row was not updated
-                throw new RuntimeException("User was not updated: " + user.getEmail());
+                throw new DBActionException(user ,"ACTUALIZACION_SIN_CAMBIOS_DATOS_IDENTICOS");
             }
-
             // Return the updated user request
             return user;
         } catch (Exception e) {
-            // Throw a runtime exception to trigger transaction rollback
-            throw new RuntimeException("Failed to update user: " + user.getEmail(), e);
+            // Handle any exceptions and log or rethrow as needed
+            throw new DBActionException(user ,e.getMessage());
         }
     }
-
+    @CacheEvict (cacheNames = "user", key = "#userId")
+    @Transactional
     @Override
-    public DeleteUserResult deleteUser(String username) {
+    public DeleteUserResult deleteUser(String userId) {
         DeleteUserResult result = new DeleteUserResult();
-
         try {
-            // Retrieve the user from the database
-            UserEntity user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
-
             // Delete the user
-            int row = userRepository.deleteUserById(user.getId());
+            int row = userRepository.deleteByUserId(userId);
             if(row == 0){
-                throw new RuntimeException("User " + username + " was not deleted");
+                throw new RuntimeException(userId);
             }
-
             result.setSuccess(true);
-            result.setMessage("User deleted successfully");
-            result.setUser(user); // Optionally, include the deleted user in the result
-        } catch (UsernameNotFoundException e) {
+            result.setMessage(row + " User deleted successfully");
+        } catch (RuntimeException e) {
             result.setSuccess(false);
-            result.setMessage(e.getMessage());
-        } catch (Exception e) {
-            result.setSuccess(false);
-            result.setMessage("An error occurred while deleting the user");
-            // Optionally, log the exception or additional details
+            result.setMessage("An error occurred while deleting the user: " + e.getMessage());
         }
         return result;
     }
-
+    @CachePut(value = "user", key = "#userId")
     @Override
-    public boolean changePassword(String email, String oldPassword, String newPassword) {
+    public boolean changePassword(String userId, String oldPassword, String newPassword) {
         // Find the user by email
-        UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User with email: " + email + " not found"));
+        UserEntity user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UsernameNotFoundException(userId));
 
         // Check if the old password matches
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
@@ -141,15 +137,15 @@ public class UserManagementServiceImpl implements UserManagementService {
         // Check if user update was successful
         if (!updatedUser.getPassword().equals(user.getPassword())) {
             // Rollback the password change if update failed
-            throw new RuntimeException("Failed to update password for user: " + email);
+            throw new RuntimeException("Failed to update password for user: " + userId);
         }
 
         return true;
     }
 
     @Override
-    public boolean userExists(long id) {
-        return userRepository.findById(id).isPresent();
+    public boolean userExists(String email) {
+        return userRepository.findByEmail(email).isPresent();
     }
 
 }

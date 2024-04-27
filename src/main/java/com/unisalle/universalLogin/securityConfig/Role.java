@@ -3,12 +3,19 @@ package com.unisalle.universalLogin.securityConfig;
 import lombok.Getter;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 import static com.unisalle.universalLogin.securityConfig.Permission.*;
-public enum Role {
-    USER(Collections.emptySet()),
+public enum Role implements Serializable {
+    USER(
+            Set.of(
+                USER_READ,
+                USER_UPDATE,
+                USER_CREATE,
+                USER_DELETE
+    )),
     ADMIN(
             Set.of(
                     ADMIN_READ,
@@ -40,7 +47,7 @@ public enum Role {
     public Set<SimpleGrantedAuthority> getAuthorities(){
         return getPermissions().stream()
                 .map(Permission::getPermission)
-                .map(permission -> new SimpleGrantedAuthority("Role_"+permission))
+                .map(permission -> new SimpleGrantedAuthority(permission))
                 .collect(Collectors.toSet());
     }
 

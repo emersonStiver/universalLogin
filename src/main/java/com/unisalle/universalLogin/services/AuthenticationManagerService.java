@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unisalle.universalLogin.dtos.AuthenticationResponse;
 import com.unisalle.universalLogin.entities.Token;
 import com.unisalle.universalLogin.entities.TokenType;
+import com.unisalle.universalLogin.entities.UserEntity;
 import com.unisalle.universalLogin.repositories.TokenRepository;
 import com.unisalle.universalLogin.repositories.UserRepository;
 import com.unisalle.universalLogin.securityConfig.JwtUtils;
@@ -54,10 +55,11 @@ public class AuthenticationManagerService {
      */
 
     public void saveUserToken(UserDetails userDetails, String accessToken, String refreshToken){
+        UserEntity user = userRepository.findByUserId(userDetails.getUsername()).get();
         Token token = Token.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .user(null)//add user!!!!!
+                .user(user)
                 .tokenType(TokenType.BEARER)
                 .isExpired(false)
                 .isRevoked(false)

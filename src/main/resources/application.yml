@@ -1,19 +1,31 @@
 server:
   port: 8081
 
+logging:
+  level:
+    root: INFO
+    org.springframework.security: TRACE
+    org.springframework.data: TRACE
+
 #springdoc:
   #api-docs:
     #path: index
   #swagger-ui:
     #path: welcome
 spring:
+  cache:
+    type: redis
+    host: localhost
+    port: 6379
+    redis:
+      time-to-live: 60000
   application:
     name: universalLogin
 
   datasource:
-    url: jdbc:mysql://localhost:3306/universalLogin
-    username: root
-    password: Germany1#
+    url: jdbc:mysql://localhost:3307/identityProviderDB
+    username: emerson
+    password: emerson123
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -27,11 +39,14 @@ spring:
     database-platform: org.hibernate.dialect.MySQL8Dialect
 
 
+
 allowed-post-routes: >
   /login/**,
   /oauth2/**,
   /logout,
-  /bff/**
+
+restricted-user-controller-routes: >
+  /
 
 resources: >
   /api/v1/auth/**,

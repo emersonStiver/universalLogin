@@ -24,9 +24,8 @@ public class JwtUtils {
     @Value("${myapp.security.jwt.refreshExpiration}")
     private long refreshExpiration;
 
-
     //BUILD JWT TOKEN
-    public String generateJwtToken(Map<String, String> claims, UserDetails user){
+    public String generateJwtToken(UserDetails user, Map<String, Object> claims){
         return buildToken(user, claims, expiration);
     }
     public String generateJwtToken(UserDetails user){
@@ -36,9 +35,9 @@ public class JwtUtils {
         return buildToken(user, new HashMap<>(), refreshExpiration);
     }
     //Key is mixed with the header and payload in a secure way, then, all of it is hashed using HS256
-    public String buildToken(UserDetails userDetails, Map<String, String> extraClaims, long expirationTime){
+    public String buildToken(UserDetails userDetails, Map<String, Object> extraClaims, long expirationTime){
         return Jwts.builder()
-                .setClaims(extraClaims)
+                .addClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
@@ -49,9 +48,10 @@ public class JwtUtils {
 
 
     //METHODS TO EXTRACT INFORMATION FROM THE TOKEN
+
     private Claims extractAllClaims(String token){
         JwtParser parser = Jwts.parserBuilder().setSigningKey(keyGenerator()).build();
-        //parser.parseClaimsJws(token).getHeader();
+        parser.parseClaimsJws(token).getHeader();
         //parser.parseClaimsJws(token).getSignature();
         Claims claims = parser.parseClaimsJws(token).getBody();
         return claims;
@@ -68,11 +68,11 @@ public class JwtUtils {
     private boolean isTokenExpired(String token){
         return extractClaim(token, (Claims claims) -> claims.getExpiration()).before(new Date());
     }
-    public String extractUsernamme(String token){
+    public String extractSubject(String token){
         return extractClaim(token, (Claims claims) -> claims.getSubject());
     }
     public boolean isTokenValid(String token, UserDetails userDetails){
-        String user = extractUsernamme(token);
+        String user = extractSubject(token);
         return user.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 

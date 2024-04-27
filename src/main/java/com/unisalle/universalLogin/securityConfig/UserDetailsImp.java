@@ -2,10 +2,13 @@ package com.unisalle.universalLogin.securityConfig;
 
 import com.unisalle.universalLogin.entities.UserEntity;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.stream.Collectors;
 public class UserDetailsImp implements UserDetails {
     private UserEntity userEntity;
@@ -14,8 +17,10 @@ public class UserDetailsImp implements UserDetails {
     }
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities( ){
-        return userEntity.getAuthorities().stream()
-                .flatMap( simpleAuthorizationSet -> simpleAuthorizationSet.getAuthorities().stream())
+        Set<String> authorities = StringUtils.commaDelimitedListToSet(userEntity.getAuthorities());
+        return authorities.stream()
+                .map(String::trim)
+                .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
     }
 
@@ -26,22 +31,22 @@ public class UserDetailsImp implements UserDetails {
 
     @Override
     public String getUsername( ){
-        return userEntity.getUsername();
+        return userEntity.getUserId();
     }
 
     @Override
     public boolean isAccountNonExpired( ){
-        return userEntity.isAccountExpired();
+        return userEntity.isAccountNonExpired();
     }
 
     @Override
     public boolean isAccountNonLocked( ){
-        return userEntity.isAccountLocked();
+        return userEntity.isAccountNonLocked();
     }
 
     @Override
     public boolean isCredentialsNonExpired( ){
-        return userEntity.isCredentialsExpired();
+        return userEntity.isCredentialsNonExpired();
     }
 
     @Override

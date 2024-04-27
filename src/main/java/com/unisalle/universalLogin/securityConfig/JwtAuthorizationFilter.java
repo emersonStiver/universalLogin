@@ -27,22 +27,21 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter{
     private TokenRepository tokenRepository;
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException{
-
         //continue the chain if path contains /login
+        System.out.println("---------------STARTING AUTHENTICATION----------------");
         if(request.getServletPath().contains("/login")){
             filterChain.doFilter(request, response);
             return;
         }
 
         //If no authorization header is set or the value x start with Bearer, deny authorization
-        final String authorizationHeader = request.getParameter("Authorization");
-        if(authorizationHeader == null || !authorizationHeader.startsWith("Bearer")){
+        final String authorizationHeader = request.getHeader("Authorization");
+        if(authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")){
             filterChain.doFilter(request, response);
             return;
         }
-
-        final String username = jwtUtils.extractUsernamme(authorizationHeader.substring(7));
         final String jwt = authorizationHeader.substring(7);
+        final String username = jwtUtils.extractSubject(jwt);
 
         if(username != null && SecurityContextHolder.getContext().getAuthentication() == null){
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -52,11 +51,10 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter{
                 var authenticationToken =  UsernamePasswordAuthenticationToken.authenticated(userDetails.getUsername(), userDetails.getPassword(), userDetails.getAuthorities());
                 WebAuthenticationDetails webAuthenticationDetails = new WebAuthenticationDetailsSource().buildDetails(request);
                 authenticationToken.setDetails(webAuthenticationDetails);
+                userDetails.getAuthorities().forEach(System.out::println);
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         }
         filterChain.doFilter(request,response);
-
-
     }
 }

@@ -21,12 +21,12 @@ public class UserDataValidator implements Validator {
     public void validate(Object target, Errors errors) {
         UserEntityDTO userEntityDTO = (UserEntityDTO) target;
 
-        validationUtilities.validName(userEntityDTO.getFirstname(), errors);
-        validationUtilities.validName(userEntityDTO.getLastname(), errors);
+        validationUtilities.validName(userEntityDTO.getFirstName(), errors);
+        validationUtilities.validName(userEntityDTO.getLastName(), errors);
         validationUtilities.validEmail(userEntityDTO.getEmail(), errors);
         validationUtilities.validPassword(userEntityDTO.getPassword(), errors);
 
-        if (userEntityDTO.getIdentification() == null) {
+        if (userEntityDTO.getNationalId() == null) {
             errors.rejectValue("identification", "NotNull.userEntityDTO.identification", "Identification cannot be null");
         }
 

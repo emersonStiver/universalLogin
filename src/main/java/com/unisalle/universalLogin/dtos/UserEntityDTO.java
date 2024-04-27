@@ -5,21 +5,28 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+import java.io.Serializable;
 import java.util.Set;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class UserEntityDTO {
+public class UserEntityDTO implements Serializable {
     @NotNull
-    private Long identification;
+    private String nationalId;
 
     @NotBlank
-    private String firstname;
+    private String firstName;
 
     @NotBlank
-    private String lastname;
+    private String lastName;
+
+    @NotBlank
+    private String department;
+
+    @NotBlank
+    private String city;
 
     @NotBlank
     @Email

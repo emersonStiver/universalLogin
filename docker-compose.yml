@@ -1,38 +1,67 @@
+version: '2.3'
+
 services:
-  postgres:
-    container_name: postgres-sql
-    image: postgres
-    environment:
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
-      PGDATA: /data/postgres
-    volumes:
-      - postgres:/data/postgres
+  mysql:
+    restart: always
+    image: mysql:5.7
+    container_name: mysql_container
     ports:
-      - "5432:5432"
-    networks:
-      - postgres
-    restart: unless-stopped
-
-  pgadmin:
-    container_name: pgadmin
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      - "3307:3306"
     volumes:
-      - pgadmin:/var/lib/pgadmin
-    ports:
-      - "5050:80"
+      - ./store/:/var/lib/mysql
+    mem_limit: 512m
     networks:
-      - postgres
-    restart: unless-stopped
+      - mysqlnetwork
+    environment:
+      - MYSQL_DATABASE=identityProviderDB
+      - MYSQL_USER=emerson
+      - MYSQL_PASSWORD=emerson123
+      - MYSQL_ROOT_PASSWORD=superEmerson123
+      - PMA_ARBITRARY=1
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=emerson
+      - PMA_PASSWORD=emerson123
 
-networks:
-  postgres:
-    driver: bridge
+  mysql-admin:
+    restart: always
+    image: phpmyadmin/phpmyadmin
+    container_name: mariadb-phpmyadmin
+    ports:
+      - "8001:80"
+    mem_limit: 512m
+    networks:
+      - mysqlnetwork
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - /path/to/local/dаta:/root/redis
+      - /path/to/local/redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD=my-password
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+    mem_limit: 96m
+    networks:
+      - mysqlnetwork
 
 volumes:
-  postgres:
-  pgadmin:
+  mysql:
+    driver: local
+  redis:
+    driver: local
+
+networks:
+  mysqlnetwork:
+    driver: bridge
